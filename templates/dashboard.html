@@ -1,0 +1,838 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ECC Dashboard{% endblock %}
+
+{% block navbar_links %}
+<li class="nav-item">
+    <a class="nav-link" href="{% url 'upload' %}">
+        <i class="fa-solid fa-upload"></i> Upload New File
+    </a>
+</li>
+{% endblock %}
+
+{% block css %}
+<style>
+    /* ============================================================
+       DESIGN TOKENS
+    ============================================================ */
+    :root {
+        --red:          rgb(228, 21, 24);
+        --blue:         rgb(25, 61, 141);
+        --surface:      #f4f6fb;
+        --card-bg:      #ffffff;
+        --border:       #e2e8f0;
+        --text-primary: #1a2340;
+        --text-muted:   #64748b;
+        --radius-sm:    6px;
+        --radius-md:    10px;
+        --radius-lg:    14px;
+        --shadow-sm:    0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+        --shadow-md:    0 4px 12px rgba(0,0,0,.08);
+        --shadow-lg:    0 8px 24px rgba(0,0,0,.10);
+        --transition:   all .2s ease;
+
+        /* Semantic button colours */
+        --btn-full:       #2563eb;
+        --btn-full-h:     #1d4ed8;
+        --btn-accepted:   #16a34a;
+        --btn-accepted-h: #15803d;
+        --btn-report:     #0891b2;
+        --btn-report-h:   #0e7490;
+        --btn-upload:     #d97706;
+        --btn-upload-h:   #b45309;
+        --btn-final:      #dc2626;
+        --btn-final-h:    #b91c1c;
+        --btn-commission: #7c3aed;
+        --btn-commission-h:#6d28d9;
+    }
+
+    /* ============================================================
+       BASE
+    ============================================================ */
+    body {
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        color: var(--text-primary);
+        background: var(--surface);
+    }
+
+    .navbar {
+        background: linear-gradient(to right, var(--red) 12%, var(--blue) 12%) !important;
+    }
+    footer {
+        background: linear-gradient(to right, var(--red) 12%, var(--blue) 12%) !important;
+    }
+
+    /* ============================================================
+       ACTION BAR  (download / upload buttons)
+    ============================================================ */
+    .action-bar {
+        background: var(--card-bg);
+        border-bottom: 1px solid var(--border);
+        padding: 14px 0;
+        box-shadow: var(--shadow-sm);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+
+    .action-bar .container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    /* ─── Action Buttons ─── */
+    .action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 8px 16px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        border-radius: var(--radius-sm);
+        border: none;
+        cursor: pointer;
+        color: #fff;
+        transition: var(--transition);
+        letter-spacing: 0.2px;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+    .action-btn i { font-size: 0.75rem; }
+    .action-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+        color: #fff;
+    }
+    .action-btn:active { transform: translateY(0); }
+    .action-btn:disabled {
+        opacity: .45;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .btn-full-batch   { background: var(--btn-full); }
+    .btn-full-batch:hover { background: var(--btn-full-h); }
+
+    .btn-accepted     { background: var(--btn-accepted); }
+    .btn-accepted:hover { background: var(--btn-accepted-h); }
+
+    .btn-report       { background: var(--btn-report); }
+    .btn-report:hover { background: var(--btn-report-h); }
+
+    .btn-upload-xls   { background: var(--btn-upload); }
+    .btn-upload-xls:hover { background: var(--btn-upload-h); }
+
+    .btn-final        { background: var(--btn-final); }
+    .btn-final:hover  { background: var(--btn-final-h); }
+
+    .btn-commission   { background: var(--btn-commission); }
+    .btn-commission:hover { background: var(--btn-commission-h); }
+
+    /* uploaded-file chip */
+    .file-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        background: #fef3c7;
+        border: 1px solid #fcd34d;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #92400e;
+        max-width: 160px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .file-chip i { color: #16a34a; flex-shrink: 0; }
+
+    /* divider between button groups */
+    .action-divider {
+        width: 1px;
+        height: 28px;
+        background: var(--border);
+        flex-shrink: 0;
+    }
+
+    /* ============================================================
+       CONFIG PANEL  (inputs)
+    ============================================================ */
+    .config-panel {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 18px 20px;
+        box-shadow: var(--shadow-sm);
+        margin-bottom: 20px;
+    }
+    .config-panel-title {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text-muted);
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .config-panel-title::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: var(--border);
+    }
+
+    .config-panel .form-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+    }
+    .config-panel .form-control {
+        font-size: 0.8rem;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        padding: 7px 10px;
+        transition: var(--transition);
+        color: var(--text-primary);
+    }
+    .config-panel .form-control:focus {
+        border-color: var(--blue);
+        box-shadow: 0 0 0 3px rgba(25,61,141,.12);
+        outline: none;
+    }
+    .config-panel .form-text {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        margin-top: 3px;
+    }
+
+    /* ============================================================
+       STAT CARDS
+    ============================================================ */
+    .stat-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 14px 16px;
+        box-shadow: var(--shadow-sm);
+        cursor: pointer;
+        transition: var(--transition);
+        position: relative;
+        overflow: hidden;
+    }
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        left: 0; top: 0; bottom: 0;
+        width: 3px;
+        border-radius: 3px 0 0 3px;
+        background: var(--accent, var(--blue));
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+    .stat-card.active {
+        border-color: var(--accent, var(--blue));
+        box-shadow: 0 0 0 3px rgba(25,61,141,.10), var(--shadow-md);
+    }
+    .stat-card .label {
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        color: var(--accent, var(--blue));
+        margin-bottom: 4px;
+    }
+    .stat-card .value {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        line-height: 1.1;
+    }
+    .stat-card .sub {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        margin-top: 2px;
+    }
+
+    /* Accent colours per card type */
+    .stat-all        { --accent: var(--blue); }
+    .stat-accepted   { --accent: #16a34a; }
+    .stat-insuf      { --accent: #d97706; }
+    .stat-other      { --accent: #dc2626; }
+    .stat-total      { --accent: var(--blue); cursor: default; }
+
+    /* ============================================================
+       FILTER BADGE
+    ============================================================ */
+    .filter-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: var(--radius-sm);
+        font-size: 0.78rem;
+        color: #1e40af;
+        margin-bottom: 16px;
+    }
+    .filter-status .badge {
+        background: var(--blue);
+        color: #fff;
+        font-size: 0.68rem;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-weight: 700;
+    }
+
+    /* ============================================================
+       DATA TABLE
+    ============================================================ */
+    .table-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+    }
+    .table-card .table {
+        font-size: 0.75rem;
+        margin-bottom: 0;
+    }
+    .table-card thead th {
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-muted);
+        background: #f8fafc;
+        border-bottom: 2px solid var(--border);
+        padding: 10px 12px;
+        white-space: nowrap;
+    }
+    .table-card tbody tr {
+        transition: background .12s;
+    }
+    .table-card tbody tr:hover {
+        background: #f0f7ff;
+    }
+    .table-card tbody td {
+        padding: 7px 12px;
+        vertical-align: middle;
+        border-color: #f1f5f9;
+        color: var(--text-primary);
+    }
+    .table-card tfoot td {
+        font-weight: 700;
+        font-size: 0.8rem;
+        background: #f8fafc;
+        border-top: 2px solid var(--border);
+        padding: 10px 12px;
+    }
+    .amount {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        font-weight: 500;
+    }
+
+    /* Reason badges */
+    .reason-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+    }
+    .reason-accepted    { background: #dcfce7; color: #166534; }
+    .reason-insufficient{ background: #fef3c7; color: #92400e; }
+    .reason-other       { background: #fee2e2; color: #991b1b; }
+    .reason-none        { background: #f1f5f9; color: #475569; }
+
+    /* ============================================================
+       EMPTY STATE
+    ============================================================ */
+    .empty-state {
+        padding: 60px 20px;
+        text-align: center;
+        color: var(--text-muted);
+    }
+    .empty-state .icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .empty-state h5    { font-size: 1rem; color: var(--text-primary); margin-bottom: 6px; }
+    .empty-state p     { font-size: 0.82rem; }
+
+    /* ============================================================
+       SECTION DIVIDER
+    ============================================================ */
+    .section-divider {
+        border: none;
+        border-top: 2px solid var(--red);
+        margin: 20px 0;
+        opacity: .25;
+    }
+
+    /* ============================================================
+       MOBILE  (≤991px)
+    ============================================================ */
+    @media (max-width: 991px) {
+        .navbar-toggler, #mainNavbar { display: none !important; }
+        .navbar { min-height: 70px; padding: 16px 0; }
+        .navbar-brand { margin: 0 auto; font-size: 1.2rem; }
+        .navbar .container-fluid { justify-content: center; }
+        .content-wrapper { padding-top: 90px !important; }
+        .desktop-only { display: none !important; }
+
+        .action-bar {
+            position: static;
+            padding: 20px 0;
+            min-height: calc(100vh - 200px);
+            background: var(--surface);
+        }
+        .action-bar .container {
+            flex-direction: column;
+            padding: 0 20px;
+            gap: 14px;
+        }
+        .action-btn {
+            width: 100%;
+            justify-content: center;
+            padding: 16px 20px;
+            font-size: 1rem;
+            border-radius: var(--radius-md);
+        }
+        .action-divider { display: none; }
+        .file-chip { max-width: 100%; }
+        .mobile-title { display: block !important; }
+    }
+
+    @media (min-width: 992px) {
+        .mobile-title { display: none !important; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ============================================================
+     ACTION BAR
+============================================================ -->
+<div class="action-bar">
+    <div class="container">
+
+        <h5 class="mobile-title text-center fw-bold mb-3 w-100" style="font-size:1.1rem;">
+            Download ECC Reports
+        </h5>
+
+        <!-- Group 1: Batch downloads -->
+        <button class="action-btn btn-full-batch" id="downloadFullBatch">
+            <i class="fa-solid fa-file-arrow-down"></i> Full Batch
+        </button>
+        <button class="action-btn btn-accepted" id="downloadAcceptedBatch">
+            <i class="fa-solid fa-circle-check"></i> Accepted Batch
+        </button>
+        <button class="action-btn btn-report" id="downloadFullReport">
+            <i class="fa-solid fa-table"></i> Full Report
+        </button>
+        <button class="action-btn btn-commission" id="downloadCommissionBatch">
+            <i class="fa-solid fa-percent"></i> Commission Batch
+        </button>
+
+        <div class="action-divider"></div>
+
+        <!-- Group 2: Final batch workflow -->
+        <label class="action-btn btn-upload-xls mb-0" for="fullBatchFileInput" style="cursor:pointer;">
+            <i class="fa-solid fa-upload"></i> Upload Full Batch
+            <input type="file" id="fullBatchFileInput" accept=".xls,.xlsx" style="display:none;">
+        </label>
+        <span class="file-chip d-none" id="uploadedFileChip">
+            <i class="fa-solid fa-circle-check"></i>
+            <span id="uploadedFileName">—</span>
+        </span>
+        <button class="action-btn btn-final" id="downloadFinalBatch" disabled title="Upload Full Batch XLS first">
+            <i class="fa-solid fa-file-export"></i> Final Batch
+        </button>
+
+    </div>
+</div>
+
+
+<!-- ============================================================
+     MAIN CONTENT  (desktop only)
+============================================================ -->
+<div class="container py-4 px-4 desktop-only">
+
+    <!-- ── Stat Cards ── -->
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-md">
+            <div class="stat-card stat-all filter-btn active" data-filter="all" onclick="filterTable('all')">
+                <div class="label">Total Cheques</div>
+                <div class="value">{{ total_records }}</div>
+                <div class="sub">Click to view all</div>
+            </div>
+        </div>
+        <div class="col-6 col-md">
+            <div class="stat-card stat-accepted filter-btn" data-filter="accepted" onclick="filterTable('accepted')">
+                <div class="label">Accepted</div>
+                <div class="value">{{ accepted_count }}</div>
+                <div class="sub">Rs.&nbsp;{{ accepted_amount|floatformat:2 }}</div>
+            </div>
+        </div>
+        <div class="col-6 col-md">
+            <div class="stat-card stat-insuf filter-btn" data-filter="insufficient" onclick="filterTable('insufficient')">
+                <div class="label">Insufficient Funds</div>
+                <div class="value">{{ insufficient_funds_count }}</div>
+                <div class="sub">Rs.&nbsp;{{ insufficient_funds_amount|floatformat:2 }}</div>
+            </div>
+        </div>
+        <div class="col-6 col-md">
+            <div class="stat-card stat-other filter-btn" data-filter="other" onclick="filterTable('other')">
+                <div class="label">Non-Accepted</div>
+                <div class="value">{{ other_reasons_count }}</div>
+                <div class="sub">Rs.&nbsp;{{ other_reasons_amount|floatformat:2 }}</div>
+            </div>
+        </div>
+        <div class="col-12 col-md-3">
+            <div class="stat-card stat-total">
+                <div class="label">Grand Total</div>
+                <div class="value" style="color:var(--blue);">Rs.&nbsp;{{ total_amount|floatformat:2 }}</div>
+                <div class="sub">All cheques combined</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Filter Status ── -->
+    <div class="filter-status" id="filterStatus">
+        <i class="fa-solid fa-filter" style="font-size:0.7rem;"></i>
+        Showing: <strong id="filterText">All Cheques</strong>
+        <span class="badge" id="filterCount">{{ total_records }}</span>
+    </div>
+
+    <!-- ── Config Panel ── -->
+    <div class="config-panel">
+        <div class="config-panel-title">
+            <i class="fa-solid fa-sliders" style="font-size:0.65rem;"></i>
+            Batch Configuration
+        </div>
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label" for="branch_code">Branch Code</label>
+                <input type="text" class="form-control" id="branch_code"
+                       value="255" placeholder="e.g. 255" maxlength="10">
+                <div class="form-text">Used in all generated batches</div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="parking_account">Parking Account</label>
+                <input type="text" class="form-control" id="parking_account"
+                       value="9313102000" placeholder="e.g. 9313102000" maxlength="20">
+                <div class="form-text">Full &amp; Accepted batch credit account</div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="commission_account">Commission Account</label>
+                <input type="text" class="form-control" id="commission_account"
+                       value="9505062601" placeholder="e.g. 9505062601" maxlength="20">
+                <div class="form-text">Commission batch credit account</div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="commission_amount">Commission Amount (Rs.)</label>
+                <input type="number" class="form-control" id="commission_amount"
+                       value="15" min="0" step="0.01" placeholder="e.g. 15">
+                <div class="form-text">Applied to cheques &gt; Rs.&nbsp;2,00,000</div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="amount_threshold">Commission Threshold (Rs.)</label>
+                <input type="number" class="form-control" id="amount_threshold"
+                    value="200000" min="0" step="1" placeholder="e.g. 200000">
+                <div class="form-text">Cheques above this amount get commission</div>
+            </div>
+        </div>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- ── Data Table ── -->
+    <div class="table-card">
+        {% if data %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 table-bordered" id="chequeTable">
+                <thead>
+                    <tr>
+                        <th style="width:48px;">#</th>
+                        <th>BFD Account</th>
+                        <th>Pay Bank</th>
+                        <th>Pay Account</th>
+                        <th>Cheque No.</th>
+                        <th class="text-end">Amount (Rs.)</th>
+                        <th>Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in data %}
+                    {% with reason_upper=record.reason|upper %}
+                    <tr class="cheque-row"
+                        data-category="{% if 'ACCEPTED' in reason_upper %}accepted{% elif 'INSUFFICIENT' in reason_upper or 'FUND' in reason_upper %}insufficient{% elif record.reason %}other{% else %}no-reason{% endif %}">
+                        <td class="row-number text-muted">{{ forloop.counter }}</td>
+                        <td><code style="font-size:0.72rem;background:none;color:inherit;">{{ record.bfd_account }}</code></td>
+                        <td>{{ record.pay_bank_name|default:"CLG" }}</td>
+                        <td style="font-size:0.7rem;color:var(--text-muted);">{{ record.pay_account|default:"—" }}</td>
+                        <td><strong>{{ record.cheque_number }}</strong></td>
+                        <td class="amount" data-amount="{{ record.cheque_amount }}">
+                            {{ record.cheque_amount|floatformat:2 }}
+                        </td>
+                        <td>
+                            {% if record.reason %}
+                                {% with r=record.reason|upper %}
+                                <span class="reason-badge {% if 'ACCEPTED' in r %}reason-accepted{% elif 'INSUFFICIENT' in r or 'FUND' in r %}reason-insufficient{% else %}reason-other{% endif %}">
+                                    {{ record.reason }}
+                                </span>
+                                {% endwith %}
+                            {% else %}
+                                <span class="reason-badge reason-none">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endwith %}
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="5" class="text-end text-muted">Total</td>
+                        <td class="amount" id="displayedTotal">{{ total_amount|floatformat:2 }}</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="icon">📭</div>
+            <h5>No Data Available</h5>
+            <p>No cheque data was extracted from the PDF file.</p>
+            <a href="{% url 'upload' %}" class="action-btn btn-full-batch mt-2" style="display:inline-flex;">
+                Upload New File
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+</div><!-- /container -->
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+/* ============================================================
+   UTILITIES
+============================================================ */
+const $ = id => document.getElementById(id);
+
+const DownloadCounter = {
+    get: type => parseInt(localStorage.getItem(`ecc_dl_${type}`) || '0'),
+    next: type => {
+        const n = DownloadCounter.get(type) + 1;
+        localStorage.setItem(`ecc_dl_${type}`, n);
+        return n;
+    }
+};
+
+function triggerDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a   = Object.assign(document.createElement('a'), { href: url, download: filename });
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+}
+
+function setLoading(btn, loading) {
+    if (loading) {
+        btn._orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing…';
+        btn.disabled  = true;
+    } else {
+        btn.innerHTML = btn._orig;
+        btn.disabled  = false;
+    }
+}
+
+function getConfig() {
+    return {
+        branchCode:         ($('branch_code')?.value.trim()         || '255'),
+        parkingAccount:     ($('parking_account')?.value.trim()     || '9313102000'),
+        commissionAccount:  ($('commission_account')?.value.trim()  || '9505062601'),
+        commissionAmount:   ($('commission_amount')?.value.trim()   || '15'),
+        amountThreshold:    ($('amount_threshold')?.value.trim()    || '200000'),
+    };
+}
+
+async function postAndDownload(url, formData, btn, filename) {
+    setLoading(btn, true);
+    try {
+        const res = await fetch(url, { method: 'POST', body: formData });
+        if (res.ok) {
+            triggerDownload(await res.blob(), filename);
+        } else {
+            const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+            alert('Error: ' + err.error);
+        }
+    } catch (e) {
+        alert('Network error: ' + e.message);
+    } finally {
+        setLoading(btn, false);
+    }
+}
+
+/* ============================================================
+   BATCH DOWNLOADS
+============================================================ */
+async function downloadBatch(type) {
+    const pdf = window.PDFStorage?.load();
+    if (!pdf) { alert('No PDF found. Please upload a PDF first.'); return; }
+
+    const cfg = getConfig();
+    const fd  = new FormData();
+    fd.append('pdf_file',        pdf);
+    fd.append('batch_type',      type);
+    fd.append('branch_code',     cfg.branchCode);
+    fd.append('parking_account', cfg.parkingAccount);
+
+    const btn  = $(type === 'accepted' ? 'downloadAcceptedBatch' : 'downloadFullBatch');
+    const name = type === 'accepted'
+        ? `ecc_batch_accepted${DownloadCounter.next('accepted')}.xls`
+        : `ecc_batch${DownloadCounter.next('full')}.xls`;
+
+    await postAndDownload("{% url 'generate_batch' %}", fd, btn, name);
+}
+
+async function downloadReport() {
+    const btn = $('downloadFullReport');
+    setLoading(btn, true);
+    try {
+        const res = await fetch("{% url 'download_excel' %}");
+        if (res.ok) {
+            triggerDownload(await res.blob(), `ecc_report${DownloadCounter.next('report')}.xls`);
+        } else {
+            alert('Error downloading report');
+        }
+    } catch (e) {
+        alert('Network error: ' + e.message);
+    } finally {
+        setLoading(btn, false);
+    }
+}
+
+async function downloadCommissionBatch() {
+    const pdf = window.PDFStorage?.load();
+    if (!pdf) { alert('No PDF found. Please upload a PDF first.'); return; }
+
+    const cfg = getConfig();
+    const fd  = new FormData();
+    fd.append('pdf_file',           pdf);
+    fd.append('branch_code',        cfg.branchCode);
+    fd.append('commission_account', cfg.commissionAccount);
+    fd.append('commission_amount',  cfg.commissionAmount);
+    fd.append('amount_threshold',    cfg.amountThreshold); 
+
+    await postAndDownload(
+        "{% url 'generate_commission_batch' %}",
+        fd,
+        $('downloadCommissionBatch'),
+        `commission_batch${DownloadCounter.next('commission')}.xls`
+    );
+}
+
+/* ============================================================
+   FINAL BATCH  (XLS upload + compare)
+============================================================ */
+let uploadedXLSFile = null;
+
+$('fullBatchFileInput').addEventListener('change', function () {
+    const file = this.files[0];
+    if (!file) return;
+    uploadedXLSFile = file;
+
+    // Show chip
+    $('uploadedFileName').textContent = file.name.length > 20
+        ? file.name.slice(0, 18) + '…'
+        : file.name;
+    $('uploadedFileChip').classList.remove('d-none');
+
+    // Enable Final Batch button
+    $('downloadFinalBatch').disabled = false;
+    $('downloadFinalBatch').title    = 'Download Final Batch (ACCEPTED only)';
+});
+
+async function downloadFinalBatch() {
+    const pdf = window.PDFStorage?.load();
+    if (!pdf)            { alert('No PDF found. Please upload a PDF first.'); return; }
+    if (!uploadedXLSFile){ alert('Please upload a Full Batch XLS file first.'); return; }
+
+    const fd = new FormData();
+    fd.append('pdf_file', pdf);
+    fd.append('xls_file', uploadedXLSFile);
+
+    await postAndDownload(
+        "{% url 'generate_final_batch' %}",
+        fd,
+        $('downloadFinalBatch'),
+        `final_batch_accepted${DownloadCounter.next('final')}.xls`
+    );
+}
+
+/* ============================================================
+   EVENT LISTENERS
+============================================================ */
+$('downloadFullBatch')     .addEventListener('click', () => downloadBatch('full'));
+$('downloadAcceptedBatch') .addEventListener('click', () => downloadBatch('accepted'));
+$('downloadFullReport')    .addEventListener('click', downloadReport);
+$('downloadCommissionBatch').addEventListener('click', downloadCommissionBatch);
+$('downloadFinalBatch')    .addEventListener('click', downloadFinalBatch);
+
+/* ============================================================
+   TABLE FILTER
+============================================================ */
+function filterTable(category) {
+    const rows       = document.querySelectorAll('.cheque-row');
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    let   count = 0, total = 0;
+
+    filterBtns.forEach(b => b.classList.remove('active'));
+    document.querySelector(`[data-filter="${category}"]`)?.classList.add('active');
+
+    rows.forEach(row => {
+        const cat = row.dataset.category;
+        const show = category === 'all' || cat === category;
+        row.style.display = show ? '' : 'none';
+        if (show) {
+            count++;
+            total += parseFloat(row.querySelector('.amount').dataset.amount);
+        }
+    });
+
+    // Renumber visible rows
+    let n = 1;
+    rows.forEach(row => {
+        if (row.style.display !== 'none') row.querySelector('.row-number').textContent = n++;
+    });
+
+    $('displayedTotal').textContent = total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    $('filterCount').textContent    = count;
+
+    const labels = { all: 'All Cheques', accepted: 'Accepted', insufficient: 'Insufficient Funds', other: 'Non-Accepted' };
+    $('filterText').textContent = labels[category] || 'All Cheques';
+}
+
+document.addEventListener('DOMContentLoaded', () => filterTable('all'));
+</script>
+{% endblock %}

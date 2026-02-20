@@ -1,0 +1,308 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Upload ECC Report{% endblock %}
+
+{% block show_navbar %}
+<!-- Navbar is now included in content -->
+{% endblock %}
+
+{% block navbar_padding %}
+padding-top: 0;
+{% endblock %}
+
+{% block css %}
+<style>
+    /* Gradient navbar and footer */
+    .navbar {
+        background: linear-gradient(to right, rgb(228, 21, 24) 12%, rgb(25, 61, 141) 12%) !important;
+    }
+
+    .upload-container {
+        min-height: calc(100vh - 200px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding-top: 80px; /* Account for fixed navbar */
+    }
+
+    .upload-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        padding: 10px 10px;
+        width: 500px;
+       
+    }
+
+    .upload-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .upload-header h2 {
+        color: #0d6efd;
+        font-weight: 500;
+        margin-bottom: 10px;
+    }
+
+    .upload-header p {
+        color: #6c757d;
+        font-size: 14px;
+    }
+
+    .drop-zone {
+        border: 3px dashed #0d6efd;
+        border-radius: 10px;
+        padding: 30px 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: #f8f9fa;
+    }
+
+    .drop-zone:hover {
+        background: #e7f1ff;
+        border-color: #0a58ca;
+    }
+
+    .drop-zone.dragover {
+        background: #cfe2ff;
+        border-color: #0a58ca;
+        transform: scale(1.02);
+    }
+
+    .drop-zone-icon {
+        font-size: 50px;
+        color: #0d6efd;
+        margin-bottom: 20px;
+    }
+
+    .drop-zone-text {
+        font-size: 15px;
+        color: #495057;
+        font-weight: 500;
+        margin-bottom: 10px;
+    }
+
+    .drop-zone-hint {
+        color: #6c757d;
+        font-size: 14px;
+    }
+
+    .file-info {
+        margin-top: 20px;
+        padding: 10px;
+        background: #d1e7dd;
+        border: 1px solid #badbcc;
+        border-radius: 8px;
+        display: none;
+    }
+
+    .file-info.show {
+        display: block;
+    }
+
+    .file-info-icon {
+        color: #0f5132;
+        font-size: 15px;
+        margin-right: 10px;
+    }
+
+    .file-info-name {
+        color: #0f5132;
+        font-size:12px;
+        font-weight: 500;
+    }
+
+    .process-btn {
+        margin-top: 20px;
+        width: 100%;
+        padding: 12px;
+        font-size: 15px;
+        font-weight: 500;
+        display: none;
+    }
+
+    .process-btn.show {
+        display: block;
+    }
+
+    .loading-spinner {
+        display: none;
+        text-align: center;
+        margin-top: 20px;
+    }
+
+    .loading-spinner.show {
+        display: block;
+    }
+
+    /* Footer gradient */
+    footer {
+        background: linear-gradient(to right, rgb(228, 21, 24) 12%, rgb(25, 61, 141) 12%) !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark fixed-top shadow-sm text-white">
+    <div class="container-fluid">
+        <a class="navbar-brand px-5" href="#">
+            <i class="fa-solid fa-layer-group"></i> ECC Batch Generator
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="mainNavbar">
+            <!-- No navigation links -->
+        </div>
+    </div>
+</nav>
+
+<div class="upload-container">
+    <div class="upload-card">
+        <div class="upload-header">
+            <h3 class="text-primary"><i class="fa-solid fa-file-pdf"></i> ECC Report Upload</h3>
+            <p>Upload your ECC PDF report to view and process cheque data</p>
+        </div>
+
+        <form id="uploadForm" method="POST" action="{% url 'process_upload' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div class="drop-zone" id="dropZone">
+                <div class="drop-zone-icon">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                </div>
+                <div class="drop-zone-text">
+                    Click to browse or drag & drop PDF here
+                </div>
+                <div class="drop-zone-hint">
+                    Only PDF files are accepted
+                </div>
+                <input type="file" name="pdf_file" id="pdfFile" accept=".pdf" style="display: none;" required>
+            </div>
+
+            <div class="file-info" id="fileInfo">
+                <i class="fa-solid fa-file-pdf file-info-icon"></i>
+                <span class="file-info-name" id="fileName"></span>
+                <button type="button" class="btn btn-sm btn-outline-danger float-end" onclick="clearFile()">
+                    <i class="fa-solid fa-times"></i> Remove
+                </button>
+            </div>
+
+            <button type="submit" class="btn btn-primary process-btn" id="processBtn">
+                <i class="fa-solid fa-arrow-right"></i> Process Report
+            </button>
+
+            <div class="loading-spinner" id="loadingSpinner">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2 text-muted">Processing your PDF...</p>
+            </div>
+        </form>
+
+        <div class="alert alert-danger mt-3" id="errorMsg" style="display: none;"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const dropZone = document.getElementById('dropZone');
+    const pdfFile = document.getElementById('pdfFile');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const processBtn = document.getElementById('processBtn');
+    const uploadForm = document.getElementById('uploadForm');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const errorMsg = document.getElementById('errorMsg');
+
+    // Click to browse
+    dropZone.addEventListener('click', () => {
+        pdfFile.click();
+    });
+
+    // File selected
+    pdfFile.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            handleFile(file);
+        }
+    });
+
+    // Drag and drop
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        
+        const file = e.dataTransfer.files[0];
+        if (file) {
+            handleFile(file);
+        }
+    });
+
+    function handleFile(file) {
+        if (file.type !== 'application/pdf') {
+            showError('Please select a valid PDF file.');
+            return;
+        }
+
+        // Update file input
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        pdfFile.files = dt.files;
+
+        // Save to session storage
+        window.PDFStorage.save(file);
+
+        // Show file info
+        fileName.textContent = file.name;
+        fileInfo.classList.add('show');
+        processBtn.classList.add('show');
+        errorMsg.style.display = 'none';
+    }
+
+    function clearFile() {
+        pdfFile.value = '';
+        fileInfo.classList.remove('show');
+        processBtn.classList.remove('show');
+        window.PDFStorage.clear();
+    }
+
+    function showError(message) {
+        errorMsg.textContent = message;
+        errorMsg.style.display = 'block';
+    }
+
+    // Form submission
+    uploadForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        if (!pdfFile.files || !pdfFile.files[0]) {
+            showError('Please select a PDF file first.');
+            return;
+        }
+
+        // Show loading
+        processBtn.style.display = 'none';
+        loadingSpinner.classList.add('show');
+
+        // Submit form
+        uploadForm.submit();
+    });
+</script>
+{% endblock %}
